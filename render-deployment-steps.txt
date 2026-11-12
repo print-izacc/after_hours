@@ -1,0 +1,151 @@
+RENDER DEPLOYMENT GUIDE
+Public Anonymous Confession & Vent Board
+========================================
+
+This project is a Laravel/PHP application. Render deploys PHP apps using Docker.
+The app's stylesheet is served from public/css, so an npm build is not currently
+required.
+
+1. PREPARE THE PROJECT
+----------------------
+
+- Check that .env is not tracked by Git. Never publish .env or production secrets.
+- Create a GitHub repository and push the project to it.
+- Include composer.json, composer.lock, the Laravel source, and the Docker setup.
+- Add a production Dockerfile that installs PHP 8.3+, Composer, the PHP
+  PostgreSQL driver (pdo_pgsql), and a web server/PHP runtime. Configure the
+  server to serve Laravel's public/ directory and listen on Render's $PORT.
+- This guide uses SESSION_DRIVER=database. If the project does not already have
+  a sessions-table migration, generate one locally with:
+
+      php artisan make:session-table
+
+  Commit the generated migration so the pre-deploy migration command can
+  create the sessions table in Render's database.
+- Test the Docker image locally before deploying.
+
+If Git has not been initialized in the project yet, open PowerShell in the
+project directory and follow the GitHub instructions for creating and pushing
+a new repository. Review the files before staging them; do not stage .env.
+
+2. CREATE A RENDER POSTGRES DATABASE
+------------------------------------
+
+- In the Render Dashboard, choose New > PostgreSQL.
+- Select a region. Use the same region for the web service.
+- Create the database and wait until it is Available.
+- Copy its Internal Database URL from the database's Connect/Info page.
+- Keep the URL private. Do not put it in source code or commit it to Git.
+
+3. CREATE A DOCKER WEB SERVICE
+------------------------------
+
+- In the Render Dashboard, choose New > Web Service.
+- Connect the GitHub repository and select the branch to deploy.
+- Select Docker as the runtime and set the Dockerfile path if it is not at the
+  repository root.
+- Set a pre-deploy command, when available:
+
+      php artisan migrate --force
+
+  Do not use migrate:fresh; it drops existing tables and data.
+
+4. CONFIGURE ENVIRONMENT VARIABLES
+----------------------------------
+
+Set these in the Render service's Environment settings:
+
+    APP_ENV=production
+    APP_DEBUG=false
+    APP_KEY=<generated Laravel application key>
+    APP_URL=https://<your-render-service>.onrender.com
+    ASSET_URL=https://<your-render-service>.onrender.com
+    DB_CONNECTION=pgsql
+    DB_URL=<Render PostgreSQL Internal Database URL>
+    SESSION_DRIVER=database
+    CACHE_STORE=database
+    QUEUE_CONNECTION=sync
+    LOG_CHANNEL=stderr
+
+Generate an application key locally with:
+
+    php artisan key:generate --show
+
+Copy the printed key into Render's APP_KEY setting. Do not commit the key.
+This project reads the database connection URL from DB_URL in config/database.php.
+
+5. DEPLOY AND VERIFY
+--------------------
+
+- Save the environment variables and deploy the service.
+- Review the build and deploy logs in Render for errors.
+- Open the service's HTTPS URL and verify that the confession board loads.
+- Test creating a post, editing it with its post password, and deleting it.
+- Confirm APP_DEBUG remains false in production.
+- After the first successful deployment and migration, open the Render Shell and
+  create your administrator account:
+
+      php artisan admin:create "Your Name" you@example.com
+
+  The command prompts for the password twice without echoing it. Do not pass a
+  password as a command argument or store one in source code. The admin sign-in
+  page is not linked from the public board; authenticated administrators can
+  review and remove posts from the moderation page.
+
+6. IMPORTANT DATA NOTES
+-----------------------
+
+- Local database contents do not automatically transfer to Render. Export and
+  import data separately only if you intend to move it.
+- Do not run the demo ConfessionBoardSeeder in production. It is intentionally
+  disabled in production.
+- Store the production database URL and APP_KEY only in Render's environment
+  settings or another secure secret manager.
+- Back up production data before running schema changes.
+
+Render documentation:
+https://render.com/docs/deploy-php-laravel-docker
+https://render.com/docs/docker
+https://render.com/docs/postgresql-creating-connecting
+https://render.com/docs/configure-environment-variables
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Izac Acebedo
+BSIT 3A
+
+
+
+
+
